@@ -7,10 +7,21 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        options:
+          - dev
+          - staging
+          - production
+        default: 'dev'
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    environment: ${{github.event.input.environment }}
 
     steps:
       - name: Checkout code
