@@ -49,7 +49,11 @@ jobs:
           terraform_version: 1.5.7
 
       - name: Terraform Init
-        run: rm .terraform.lock.hcl && terraform init
+        run: |
+          if [ -f .terraform.lock.hcl ]; then
+            rm .terraform.lock.hcl
+            fi
+          terraform init
 
       - name: Terraform Validate
         run: terraform validate
