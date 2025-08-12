@@ -76,6 +76,7 @@ resource "aws_ssm_parameter" "db_password" {
   name  = "/db/postgres/password"
   type  = "SecureString"
   value = var.db_password
+  overwrite = true
 }
 
 resource "aws_db_subnet_group" "db_subnet_group" {
