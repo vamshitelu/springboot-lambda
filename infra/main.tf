@@ -145,7 +145,7 @@ resource "aws_lambda_function" "springboot" {
   memory_size = 1024
   timeout     = 30
   vpc_config {
-    subnet_ids         = [aws_subnet.lambda_subnet.id]
+    subnet_ids         = [aws_subnet.lambda_subnet_a.id,aws_subnet.lambda_subnet_b.id]
     security_group_ids = [aws_security_group.lambda_sg.id]
   }
   environment {
