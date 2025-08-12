@@ -18,10 +18,15 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
-resource "aws_subnet" "lambda_subnet" {
+resource "aws_subnet" "lambda_subnet_a" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = "10.0.1.0/24"
-  availability_zone = data.aws_availability_zones.available.names[0]
+  availability_zone = ap-south-1a
+}
+resource "aws_subnet" "lambda_subnet_b" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.1.0/24"
+  availability_zone = ap-south-1b
 }
 
 resource "aws_subnet" "db_subnet" {
@@ -75,7 +80,7 @@ resource "aws_ssm_parameter" "db_password" {
 
 resource "aws_db_subnet_group" "db_subnet_group" {
   name      = "main"
-  subnet_ids = [aws_subnet.db_subnet.id]
+  subnet_ids = [aws_subnet.lambda_subnet_a.id,aws_subnet.lambda_subnet_b.id]
 }
 
 resource "aws_db_instance" "postgres" {
