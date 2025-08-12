@@ -49,7 +49,7 @@ jobs:
           terraform_version: 1.5.7
 
       - name: Terraform Init
-        run: terraform init
+        run: terraform init -updrade
 
       - name: Terraform Validate
         run: terraform validate
