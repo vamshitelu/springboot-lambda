@@ -21,12 +21,12 @@ data "aws_availability_zones" "available" {
 resource "aws_subnet" "lambda_subnet_a" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = "10.0.1.0/24"
-  availability_zone = ap-south-1a
+  availability_zone = "${var.aws_region}a"
 }
 resource "aws_subnet" "lambda_subnet_b" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = "10.0.1.0/24"
-  availability_zone = ap-south-1b
+  availability_zone = "${var.aws_region}b"
 }
 
 resource "aws_subnet" "db_subnet" {
