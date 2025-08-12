@@ -54,11 +54,13 @@ jobs:
             rm .terraform.lock.hcl
             fi
           terraform init
+        working-directory: infra
 
       - name: Terraform Validate
         run: terraform validate
+        working-directory: infra
 
       - name: Terraform Apply
         run: terraform apply -auto-approve
-        working-directory: .infra
+        working-directory: infra
 
