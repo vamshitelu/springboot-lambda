@@ -1,0 +1,7 @@
+aws_region       = "ap-south-1"
+db_username      = "postgres"
+db_password      = "postgres123"
+db_name          = "testdb"
+lambda_function_name = "springboot-lambda"
+lambda_s3_bucket_name = "springboot-lambda-bucket"
+lambda_s3_object_key = "lambda.zip"
