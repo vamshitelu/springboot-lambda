@@ -48,10 +48,6 @@ jobs:
         with:
           terraform_version: 1.5.7
 
-      - name: Terraform Destroy
-        run: terraform destroy -auto-approve
-        working-directory: infra
-
       - name: Terraform Init
         run: |
           if [ -f .terraform.lock.hcl ]; then
@@ -59,6 +55,12 @@ jobs:
             fi
           terraform init
         working-directory: infra
+
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve
+        working-directory: infra
+
+
 
       - name: Terraform Validate
         run: terraform validate
