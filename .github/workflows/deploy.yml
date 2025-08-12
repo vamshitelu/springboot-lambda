@@ -56,6 +56,12 @@ jobs:
           terraform init
         working-directory: infra
 
+      - name: Terraform Plan
+        run: terraform refresh && terraform plan -out=tfplan
+        env:
+          TF_VAR_environment: ${{ github.event.input.environment }}
+        working-directory: infra
+
       - name: Terraform Destroy
         run: terraform destroy -auto-approve
         working-directory: infra
