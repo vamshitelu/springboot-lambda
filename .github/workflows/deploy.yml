@@ -49,7 +49,7 @@ jobs:
           terraform_version: 1.5.7
 
       - name: Terraform Init
-        run: terraform init -upgrade
+        run: rm .terraform.lock.hcl && terraform init
 
       - name: Terraform Validate
         run: terraform validate
