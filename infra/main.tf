@@ -4,6 +4,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 6.8.0"
     }
+    null = {
+      source  = "hashicorp/null"
+      version = "3.2.2"
+    }
   }
 }
 provider "aws" {
@@ -110,6 +114,17 @@ data "aws_iam_policy_document" "lambda_assume_role" {
       type        = "Service"
       identifiers = ["lambda.amazonaws.com"]
     }
+  }
+}
+
+variable "confirm_destroy" {
+  type = bool
+  default = false
+}
+
+resource "null_resource" "cleanup_trigger" {
+  triggers = {
+    always_run = timestamp()
   }
 }
 
