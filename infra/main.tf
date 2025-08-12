@@ -70,6 +70,7 @@ resource "aws_ssm_parameter" "db_username" {
   name  = "/db/postgres/username"
   type  = "String"
   value = var.db_username
+  overwrite = true
 }
 
 resource "aws_ssm_parameter" "db_password" {
@@ -113,7 +114,7 @@ data "aws_iam_policy_document" "lambda_assume_role" {
 }
 
 resource "aws_iam_role" "lambda_exec_role" {
-  name               = "lambda_exec_role_1"
+  name               = "lambda_exec_role_2"
   assume_role_policy = data.aws_iam_policy_document.lambda_assume_role.json
 }
 
