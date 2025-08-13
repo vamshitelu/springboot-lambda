@@ -89,11 +89,11 @@ resource "aws_db_subnet_group" "db_subnet_group" {
   subnet_ids = [aws_subnet.lambda_subnet_a.id,aws_subnet.lambda_subnet_b.id]
 }
 
-resource "aws_db_instance" "postgres" {
+resource "aws_db_instance" "aurora-postgresql" {
   identifier              = "springboot-db"
   engine                  = "aurora-postgresql"
   engine_version          = "15.10"
-  instance_class          = "db.t3.micro"
+  instance_class          = "db.t4g.medium"
   allocated_storage       = 20
   storage_type            = "gp2"
   username                = var.db_username
