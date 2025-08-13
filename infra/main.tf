@@ -89,7 +89,7 @@ resource "aws_db_subnet_group" "db_subnet_group" {
   subnet_ids = [aws_subnet.lambda_subnet_a.id,aws_subnet.lambda_subnet_b.id]
 }
 
-resource "aws_db_instance" "aurora-postgresql" {
+resource "aws_db_instance" "aurora-pg" {
   identifier              = "springboot-db"
   engine                  = "aurora-postgresql"
   engine_version          = "15.10"
@@ -170,7 +170,8 @@ resource "aws_lambda_function" "spring_boot_lambda" {
       DB_USERNAME = aws_ssm_parameter.db_username.name
       DB_PASSWORD = aws_ssm_parameter.db_password.name
       DB_NAME     = var.db_name
-      DB_ENDPOINT = aws_db_instance.postgres.address
+      DB_ENDPOINT = aws_rds_cluster.aurora-pg.endpoint
+
     }
   }
 }
