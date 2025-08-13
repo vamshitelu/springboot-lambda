@@ -94,8 +94,6 @@ resource "aws_db_instance" "aurora-pg" {
   engine                  = "aurora-postgresql"
   engine_version          = "15.10"
   instance_class          = "db.t4g.medium"
-  allocated_storage       = 20
-  storage_type            = "gp2"
   username                = var.db_username
   password                = var.db_password
   db_name                 = var.db_name
