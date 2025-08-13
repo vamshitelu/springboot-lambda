@@ -14,7 +14,10 @@ provider "aws" {
   region = var.aws_region
 }
 
-resource "aws_vpc" "main" {
+#-------------------------
+# Networking
+#-------------------------
+resource "aws_vpc" "main"  {
   cidr_block = "10.0.0.0/16"
 }
 
@@ -22,6 +25,7 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
+#Lambda subnets
 resource "aws_subnet" "lambda_subnet_a" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = "10.0.1.0/24"
@@ -33,12 +37,22 @@ resource "aws_subnet" "lambda_subnet_b" {
   availability_zone = data.aws_availability_zones.available.names[1]
 }
 
-#resource "aws_subnet" "db_subnet" {
-#  vpc_id            = aws_vpc.main.id
-#  cidr_block        = "10.0.2.0/24"
-#  availability_zone = data.aws_availability_zones.available.names[1]
-#}
+#DB subnets (different CIDRs to avoid conflit)
+resource "aws_subnet" "db_subnet_a" {
+  vpc_id = aws_vpc.main.id
+  cidr_block = "10.0.10.0/24"
+  availability_zone = data.aws_availability_zones.available.names[0]
+}
 
+resource "aws_subnet" "db_subnet_b" {
+  vpc_id = aws_vpc.main.id
+  cidr_block = "10.0.11.0/24"
+    availability_zone = data.aws_availability_zones.available.names[1]
+}
+
+#-------------------------
+# Security Groups
+#-------------------------
 resource "aws_security_group" "lambda_sg" {
   name        = "lambda_sg"
   description = "Security group for Lambda function"
@@ -51,6 +65,7 @@ resource "aws_security_group" "db_sg" {
   vpc_id      = aws_vpc.main.id
 }
 
+# Allow Lambda to talk to the database
 resource "aws_security_group_rule" "allow_lambda_to_db" {
   type              = "ingress"
   from_port         = 5432
@@ -60,16 +75,19 @@ resource "aws_security_group_rule" "allow_lambda_to_db" {
   source_security_group_id = aws_security_group.lambda_sg.id
 }
 
+# Allow DB Engine
 resource "aws_security_group_rule" "db_to_lambda" {
   type = "egress"
   from_port = 0
   to_port   = 0
   protocol  = "-1"
   security_group_id = aws_security_group.db_sg.id
-  source_security_group_id = aws_security_group.db_sg.id
+  cidr_blocks = ["0.0.0.0/0"]
 }
 
-
+#--------------------------
+#SSM Parameter for DB creds
+#---------------------------
 resource "aws_ssm_parameter" "db_username" {
   name  = "/db/postgres/username"
   type  = "String"
@@ -84,31 +102,46 @@ resource "aws_ssm_parameter" "db_password" {
   overwrite = true
 }
 
+#--------------------------
+# DB Subnet Group and RDS Cluster
+#--------------------------
 resource "aws_db_subnet_group" "db_subnet_group" {
-  name      = "main"
-  subnet_ids = [aws_subnet.lambda_subnet_a.id,aws_subnet.lambda_subnet_b.id]
+  name      = "main-db-subnet-group"
+  subnet_ids = [aws_subnet.db_subnet_a.id,aws_subnet.db_subnet_b.id]
 }
 
+#--------------------------
+# RDS Aurora PostgreSQL Serverless Cluster
+#--------------------------
 resource "aws_rds_cluster" "aurora-pg" {
   cluster_identifier      = "springboot-aurora-pg"
   engine                  = "aurora-postgresql"
-  engine_version          = "15.10"
+  engine_version          = "15.5"
   master_username         = var.db_username
   master_password         = var.db_password
-  database_name                 = var.db_name
+  database_name           = var.db_name
   vpc_security_group_ids  = [aws_security_group.db_sg.id]
   db_subnet_group_name    = aws_db_subnet_group.db_subnet_group.name
   skip_final_snapshot     = true
+
+  #Serverless configuration
+  serverlessv2_scaling_configuration {
+    max_capacity = 0.5
+    min_capacity = 2
+  }
 }
 
 resource "aws_rds_cluster_instance" "aurora_pg_write"{
-  identifier          = "aurora-pg-write"
+  identifier          = "aurora-pg-instance-1"
     cluster_identifier  = aws_rds_cluster.aurora-pg.id
     instance_class      = "db.serverless"
     engine              = aws_rds_cluster.aurora-pg.engine
     engine_version      = aws_rds_cluster.aurora-pg.engine_version
 }
 
+#------------------------------
+# Lambda Role & policy
+#------------------------------
 data "aws_iam_policy_document" "lambda_assume_role" {
   statement {
     actions = ["sts:AssumeRole"]
@@ -119,16 +152,6 @@ data "aws_iam_policy_document" "lambda_assume_role" {
   }
 }
 
-variable "confirm_destroy" {
-  type = bool
-  default = false
-}
-
-resource "null_resource" "cleanup_trigger" {
-  triggers = {
-    always_run = timestamp()
-  }
-}
 
 resource "aws_iam_role" "lambda_exec_role" {
   name               = "lambda_exec_role_2"
@@ -154,6 +177,9 @@ resource "aws_iam_role_policy" "lambda_ssm_policy" {
   })
 }
 
+#------------------------------
+# Lambda Function
+#------------------------------
 resource "aws_lambda_function" "spring_boot_lambda" {
   function_name = var.lambda_function_name
   role          = aws_iam_role.lambda_exec_role.arn
