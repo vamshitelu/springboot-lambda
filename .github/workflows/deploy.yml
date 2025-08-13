@@ -56,12 +56,6 @@ jobs:
           terraform init
         working-directory: infra
 
-      - name: Terraform Destroy
-        run: terraform destroy -auto-approve -var="confirm_destroy=true"
-        working-directory: infra
-
-
-
       - name: Terraform Validate
         run: terraform validate
         working-directory: infra
