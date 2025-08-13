@@ -91,8 +91,8 @@ resource "aws_db_subnet_group" "db_subnet_group" {
 
 resource "aws_db_instance" "postgres" {
   identifier              = "springboot-db"
-  engine                  = "postgres"
-  engine_version          = "15.3"
+  engine                  = "aurora-postgresql"
+  engine_version          = "15.10"
   instance_class          = "db.t3.micro"
   allocated_storage       = 20
   storage_type            = "gp2"
@@ -102,7 +102,7 @@ resource "aws_db_instance" "postgres" {
   vpc_security_group_ids  = [aws_security_group.db_sg.id]
   db_subnet_group_name    = aws_db_subnet_group.db_subnet_group.name
   skip_final_snapshot     = true
-  publicly_accessible     = false
+  publicly_accessible     = true
   multi_az = false
   storage_encrypted = false
 }
