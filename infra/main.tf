@@ -89,20 +89,24 @@ resource "aws_db_subnet_group" "db_subnet_group" {
   subnet_ids = [aws_subnet.lambda_subnet_a.id,aws_subnet.lambda_subnet_b.id]
 }
 
-resource "aws_db_instance" "aurora-pg" {
-  identifier              = "springboot-db"
+resource "aws_rds_cluster" "aurora-pg" {
+  cluster_identifier      = "springboot-aurora-pg"
   engine                  = "aurora-postgresql"
   engine_version          = "15.10"
-  instance_class          = "db.t4g.medium"
-  username                = var.db_username
-  password                = var.db_password
-  db_name                 = var.db_name
+  master_username         = var.db_username
+  master_password         = var.db_password
+  database_name                 = var.db_name
   vpc_security_group_ids  = [aws_security_group.db_sg.id]
   db_subnet_group_name    = aws_db_subnet_group.db_subnet_group.name
   skip_final_snapshot     = true
-  publicly_accessible     = false
-  multi_az = false
-  storage_encrypted = false
+}
+
+resource "aws_rds_cluster_instance" "aurora_pg_write"{
+  identifier          = "aurora-pg-write"
+    cluster_identifier  = aws_rds_cluster.aurora-pg.id
+    instance_class      = "db.serverless"
+    engine              = aws_rds_cluster.aurora-pg.engine
+    engine_version      = aws_rds_cluster.aurora-pg.engine_version
 }
 
 data "aws_iam_policy_document" "lambda_assume_role" {
@@ -168,7 +172,7 @@ resource "aws_lambda_function" "spring_boot_lambda" {
       DB_USERNAME = aws_ssm_parameter.db_username.name
       DB_PASSWORD = aws_ssm_parameter.db_password.name
       DB_NAME     = var.db_name
-      DB_ENDPOINT = aws_db_instance.aurora-pg.endpoint
+      DB_ENDPOINT = aws_rds_cluster.aurora-pg.endpoint
 
     }
   }
