@@ -126,8 +126,8 @@ resource "aws_rds_cluster" "aurora-pg" {
 
   #Serverless configuration
   serverlessv2_scaling_configuration {
-    max_capacity = 1
-    min_capacity = 2
+    max_capacity = 2
+    min_capacity = 1
   }
 }
 
