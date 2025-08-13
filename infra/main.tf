@@ -152,7 +152,7 @@ resource "aws_iam_role_policy" "lambda_ssm_policy" {
   })
 }
 
-resource "aws_lambda_function" "springboot" {
+resource "aws_lambda_function" "spring_boot_lambda" {
   function_name = var.lambda_function_name
   role          = aws_iam_role.lambda_exec_role.arn
   handler       = "com.vsoft.StreamLambdaHandler::handleRequest"
