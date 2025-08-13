@@ -170,7 +170,7 @@ resource "aws_lambda_function" "spring_boot_lambda" {
       DB_USERNAME = aws_ssm_parameter.db_username.name
       DB_PASSWORD = aws_ssm_parameter.db_password.name
       DB_NAME     = var.db_name
-      DB_ENDPOINT = aws_rds_cluster.aurora-pg.endpoint
+      DB_ENDPOINT = aws_db_instance.aurora-pg.endpoint
 
     }
   }
