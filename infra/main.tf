@@ -209,8 +209,9 @@ resource "aws_s3_account_public_access_block" "lambda_bucket_block" {
 resource "aws_s3_bucket_object" "lambda_package" {
   bucket = aws_s3_bucket.Springboot_lambda_bucket.id
   key    = var.lambda_s3_object_key
-  source = "${path.module}/target/app-lambda_package.zip" # Update with the actual path to your Lambda package
-  etag   = filemd5("${path.module}/target/app-lambda_package.zip") # Ensure this matches the file path
+
+  source = "/home/runner/work/springboot-lambda/springboot-lambda/target/app-lambda_package.zip" # Update with the actual path to your Lambda package
+  etag   = filemd5("/home/runner/work/springboot-lambda/springboot-lambda/target/app-lambda_package.zip") # Ensure this matches the file path
 }
 #------------------------------
 # Lambda Function
