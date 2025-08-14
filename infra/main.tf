@@ -8,6 +8,10 @@ terraform {
       source  = "hashicorp/null"
       version = "3.2.2"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "3.6.2"
+    }
   }
 }
 provider "aws" {
@@ -176,7 +180,39 @@ resource "aws_iam_role_policy" "lambda_ssm_policy" {
     ]
   })
 }
+#------------------------------
+#Create S3 Bucket for Lambda
+#------------------------------
+resource "aws_s3_bucket" "Spingboot_lambda_bucket" {
+  bucket = "${var.lambda_s3_bucket_name}-artifacts-${random_id.suffix.hex}"
+  force_destroy = true
 
+  tags = {
+    Name        = "Springboot Lambda Bucket"
+    Environment = "dev"
+  }
+}
+resource "random_id" "suffix" {
+  byte_length = 4
+}
+
+resource "aws_s3_account_public_access_block" "lambda_bucket_block" {
+  bucket = aws_s3_bucket.Spingboot_lambda_bucket.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+#------------------------------
+# Upload Lambda package to S3
+#------------------------------
+resource "aws_s3_bucket_object" "lambda_package" {
+  bucket = aws_s3_bucket.Spingboot_lambda_bucket.id
+  key    = var.lambda_s3_object_key
+  source = "${path.module}/target/app-lambda_package.zip" # Update with the actual path to your Lambda package
+  etag   = filemd5("${path.module}/target/app-lambda_package.zip") # Ensure this matches the file path
+}
 #------------------------------
 # Lambda Function
 #------------------------------
