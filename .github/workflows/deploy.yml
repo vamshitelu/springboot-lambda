@@ -34,7 +34,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Build with Maven
-        run: mvn clean package -DskipTests
+        run: mvn clean package -DskipTests -Passembly-zip
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v3
