@@ -80,14 +80,14 @@ resource "aws_security_group_rule" "allow_lambda_to_db" {
 }
 
 # Allow DB Engine
-resource "aws_security_group_rule" "db_to_lambda" {
-  type = "egress"
-  from_port = 0
-  to_port   = 0
-  protocol  = "-1"
-  security_group_id = aws_security_group.db_sg.id
-  cidr_blocks = ["0.0.0.0/0"]
-}
+#resource "aws_security_group_rule" "db_to_lambda" {
+#  type = "egress"
+#  from_port = 0
+#  to_port   = 0
+#  protocol  = "-1"
+#  security_group_id = aws_security_group.db_sg.id
+#  cidr_blocks = ["0.0.0.0/0"]
+#}
 
 #--------------------------
 #SSM Parameter for DB creds
@@ -118,7 +118,7 @@ resource "aws_db_subnet_group" "db_subnet_group" {
 # RDS Aurora PostgreSQL Serverless Cluster
 #--------------------------
 resource "aws_rds_cluster" "aurora-pg" {
-  cluster_identifier      = "springboot-aurora-pg"
+  cluster_identifier      = "springboot-aurora_pg"
   engine                  = "aurora-postgresql"
   engine_version          = "15.5"
   master_username         = var.db_username
@@ -136,7 +136,7 @@ resource "aws_rds_cluster" "aurora-pg" {
 }
 
 resource "aws_rds_cluster_instance" "aurora_pg_write"{
-  identifier          = "aurora-pg-instance-1"
+  identifier          = "aurora-pg-instance"
     cluster_identifier  = aws_rds_cluster.aurora-pg.id
     instance_class      = "db.serverless"
     engine              = aws_rds_cluster.aurora-pg.engine
@@ -146,22 +146,46 @@ resource "aws_rds_cluster_instance" "aurora_pg_write"{
 #------------------------------
 # Lambda Role & policy
 #------------------------------
-data "aws_iam_policy_document" "lambda_assume_role" {
-  statement {
-    actions = ["sts:AssumeRole"]
-    principals {
-      type        = "Service"
-      identifiers = ["lambda.amazonaws.com"]
-    }
-  }
+#data "aws_iam_policy_document" "lambda_assume_role" {
+#  statement {
+#    actions = ["sts:AssumeRole"]
+#    principals {
+#      type        = "Service"
+#      identifiers = ["lambda.amazonaws.com"]
+#    }
+#  }
+#}
+
+#---------------------------------
+# IAMRole for Lambda
+#----------------------------------
+resource "aws_iam_role" "lambda_exec_role"{
+  name = "lambda_exec_role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+#resource "aws_iam_role" "lambda_exec_role" {
+#  name               = "lambda_exec_role"
+#  assume_role_policy = data.aws_iam_policy_document.lambda_assume_role.json
+#}
+
+#Attachbasic execution policy
+resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
+  role       = aws_iam_role.lambda_exec_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-
-resource "aws_iam_role" "lambda_exec_role" {
-  name               = "lambda_exec_role_2"
-  assume_role_policy = data.aws_iam_policy_document.lambda_assume_role.json
-}
-
+#Policy to read DB creds from SSM
 resource "aws_iam_role_policy" "lambda_ssm_policy" {
   name = "lambda_ssm_policy"
   role = aws_iam_role.lambda_exec_role.id
@@ -183,17 +207,13 @@ resource "aws_iam_role_policy" "lambda_ssm_policy" {
 #------------------------------
 #Create S3 Bucket for Lambda
 #------------------------------
-resource "aws_s3_bucket" "Springboot_lambda_bucket" {
+resource "aws_s3_bucket" "springboot_lambda_bucket" {
   bucket = var.lambda_s3_bucket_name
   force_destroy = true
-
   tags = {
     Name        = "Springboot Lambda Bucket"
     Environment = "dev"
   }
-}
-resource "random_id" "suffix" {
-  byte_length = 4
 }
 
 resource "aws_s3_account_public_access_block" "lambda_bucket_block" {
@@ -207,12 +227,13 @@ resource "aws_s3_account_public_access_block" "lambda_bucket_block" {
 # Upload Lambda package to S3
 #------------------------------
 resource "aws_s3_bucket_object" "lambda_package" {
-  bucket = aws_s3_bucket.Springboot_lambda_bucket.id
+  bucket = aws_s3_bucket.springboot_lambda_bucket.id
   key    = var.lambda_s3_object_key
 
   source = "${path.module}/../target/springboot-lambda-1.0-SNAPSHOT.jar" # Update with the actual path to your Lambda package
   etag   = filemd5("${path.module}/../target/springboot-lambda-1.0-SNAPSHOT.jar") # Ensure this matches the file path
 }
+
 #------------------------------
 # Lambda Function
 #------------------------------
@@ -240,21 +261,85 @@ resource "aws_lambda_function" "spring_boot_lambda" {
   }
 }
 #------------------------------
-# IAM Role for Lambda Execution
+# API Gateway -> Lambda Proxy
 #------------------------------
-resource "aws_iam_role" "lambda_exec" {
-  name = "lambda_exec_role"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = {
-          Service = "lambda.amazonaws.com"
-          }
-        Action = "sts:AssumeRole"
-      }
-    ]
-  })
+resource "aws_api_gateway_rest_api" "springboot_api" {
+  name = "springboot-api"
+    description = "Proxy+ API for Spring Boot Lambda"
 }
 
+# create proxy resource {proxy+}
+resource "aws_api_gateway_resource" "proxy" {
+  parent_id   = aws_api_gateway_rest_api.springboot_api.root_resource_id
+  path_part   = "{proxy+}"
+  rest_api_id = aws_api_gateway_rest_api.springboot_api.id
+}
+
+#API method on proxy
+resource "aws_api_gateway_method" "proxy_method" {
+  rest_api_id   = aws_api_gateway_rest_api.springboot_api.id
+  resource_id   = aws_api_gateway_resource.proxy.id
+  http_method   = "ANY"
+  authorization = "NONE"
+}
+
+#Integration with Lambda
+resource "aws_api_gateway_integration" "proxy_integration" {
+  rest_api_id = aws_api_gateway_rest_api.springboot_api.id
+  resource_id = aws_api_gateway_resource.proxy.id
+  http_method = aws_api_gateway_method.proxy_method.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.spring_boot_lambda.invoke_arn
+}
+
+# Root ANY method(for "/")
+resource "aws_api_gateway_method" "root_any" {
+  rest_api_id   = aws_api_gateway_rest_api.springboot_api.id
+  resource_id   = aws_api_gateway_rest_api.springboot_api.root_resource_id
+  http_method   = "ANY"
+  authorization = "NONE"
+}
+
+# Integration for root ANY method
+resource "aws_api_gateway_integration" "root_integration" {
+  http_method = aws_api_gateway_method.root_any.http_method
+  resource_id = aws_api_gateway_rest_api.springboot_api.root_resource_id
+  rest_api_id = aws_api_gateway_rest_api.springboot_api.id
+  type        = "AWS_PROXY"
+  integration_http_method = "POST"
+    uri         = aws_lambda_function.spring_boot_lambda.invoke_arn
+}
+
+#Permission for API Gateway to invoke Lambda
+resource "aws_lambda_permission" "apigw_lambda" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.spring_boot_lambda.function_name
+  principal     = "apigateway.amazonaws.com"
+
+  # The source ARN for the API Gateway
+  source_arn = "${aws_api_gateway_rest_api.springboot_api.execution_arn}/*/*"
+}
+
+# Deployment for API Gateway
+resource "aws_api_gateway_deployment" "springboot_deployment" {
+  depends_on = [
+    aws_api_gateway_integration.proxy_integration,
+    aws_api_gateway_integration.root_integration
+  ]
+  rest_api_id = aws_api_gateway_rest_api.springboot_api.id
+  stage_name  = "dev"
+}
+
+output "api_url" {
+  value = "https://${aws_api_gateway_rest_api.springboot_api.id}.execute-api.${var.aws_region}.amazonaws.com/dev"
+}
+
+output "db_writer_endpoint"{
+  value = aws_rds_cluster.aurora-pg.endpoint
+}
+
+output "db_reader_endpoint" {
+  value = aws_rds_cluster.aurora-pg.reader_endpoint
+}
